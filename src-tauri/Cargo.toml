@@ -1,6 +1,6 @@
 [package]
 name = "port-monitor"
-version = "0.1.0"
+version = "0.3.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -24,4 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serialport = "4"
 chrono = "0.4.44"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
 
