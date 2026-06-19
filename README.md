@@ -6,11 +6,11 @@ A desktop serial port monitoring application built with **Tauri 2** and **Leptos
 
 ## Features
 
-- **Port Scanning** — Auto-detect available serial ports (USB, Bluetooth, PCI) with one click
-- **Full Configuration** — Baud rate (50–921600), data bits, stop bits, parity, and flow control
-- **Real-time Console** — Color-coded log entries (info, data, warning, error) with millisecond timestamps
-- **Data Filtering** — Offset, length, and character exclusion filters, toggleable without disconnecting
-- **Auto-scroll** — Console follows incoming data automatically
+- **Port Scanning** - Auto-detect available serial ports (USB, Bluetooth, PCI) with one click
+- **Full Configuration** - Baud rate (50-921600), data bits, stop bits, parity, and flow control
+- **Real-time Console** - Color-coded log entries (info, data, warning, error) with millisecond timestamps
+- **Data Filtering** - Offset, length, and character exclusion filters, toggleable without disconnecting
+- **Auto-scroll** - Console follows incoming data automatically
 
 ## Tech Stack
 
@@ -26,9 +26,9 @@ A desktop serial port monitoring application built with **Tauri 2** and **Leptos
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (stable)
-- [Trunk](https://trunkrs.dev/) — `cargo install trunk`
+- [Trunk](https://trunkrs.dev/) - `cargo install trunk`
 - [Bun](https://bun.sh/) (or npm/pnpm for Tailwind CSS)
-- [Tauri CLI](https://tauri.app/) — `cargo install tauri-cli`
+- [Tauri CLI](https://tauri.app/) - `cargo install tauri-cli`
 
 ### Development
 
