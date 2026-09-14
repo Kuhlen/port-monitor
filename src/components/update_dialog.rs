@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 
-use crate::tauri_commands;
+use crate::bridge::Bridge;
+use port_monitor_core::features::update::{UpdateApi, UpdateCheck};
 
 #[component]
 pub fn UpdateDialog() -> impl IntoView {
@@ -10,8 +11,8 @@ pub fn UpdateDialog() -> impl IntoView {
 
     // Check for updates on mount
     leptos::task::spawn_local(async move {
-        if let Ok(Some(info)) = tauri_commands::check_for_update().await {
-            set_update_version.set(info.version);
+        if let Ok(UpdateCheck::Available { version }) = Bridge.check_update().await {
+            set_update_version.set(version);
             set_update_available.set(true);
         }
     });
@@ -19,7 +20,7 @@ pub fn UpdateDialog() -> impl IntoView {
     let on_install = move |_| {
         set_is_installing.set(true);
         leptos::task::spawn_local(async move {
-            match tauri_commands::install_update().await {
+            match Bridge.install_update().await {
                 Ok(()) => {
                     // App will restart automatically after install
                 }

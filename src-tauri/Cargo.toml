@@ -1,8 +1,8 @@
 [package]
 name = "port-monitor"
-version = "0.3.1"
-description = "A Tauri App"
-authors = ["you"]
+version = "0.3.2"
+description = "Serial port monitor"
+authors = ["kuhlen"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,6 +20,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+port-monitor-core = { path = "../crates/core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serialport = "4"
@@ -28,3 +29,5 @@ chrono = "0.4.44"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

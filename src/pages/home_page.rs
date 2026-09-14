@@ -1,10 +1,13 @@
 use leptos::prelude::*;
 
+use crate::bridge::{self, Bridge};
 use crate::components::connection_card::ConnectionCard;
 use crate::components::console_output::{ConsoleEntry, ConsoleEntryType, ConsoleOutput};
 use crate::components::filter_card::FilterCard;
 use crate::components::ui::custom_select::SelectOption;
-use crate::tauri_commands;
+use port_monitor_core::features::filter::LineFilter;
+use port_monitor_core::features::serial::{SerialApi, SerialConfig};
+use port_monitor_core::AppError;
 
 #[component]
 pub fn HomePage() -> impl IntoView {
@@ -42,7 +45,7 @@ pub fn HomePage() -> impl IntoView {
     // Scan ports
     let on_scan = Callback::new(move |_: ()| {
         leptos::task::spawn_local(async move {
-            match tauri_commands::list_ports().await {
+            match Bridge.list_ports().await {
                 Ok(ports) => {
                     let options: Vec<SelectOption> = ports
                         .iter()
@@ -57,6 +60,8 @@ pub fn HomePage() -> impl IntoView {
 
                     set_port_options.set(options);
                 }
+                // Plain browser, no Tauri: stay quiet, not a screen error.
+                Err(AppError::IpcUnavailable) => {}
                 Err(e) => {
                     let timestamp = get_timestamp();
                     add_entry(
@@ -76,7 +81,7 @@ pub fn HomePage() -> impl IntoView {
         if connected {
             // Disconnect
             leptos::task::spawn_local(async move {
-                match tauri_commands::disconnect_port().await {
+                match Bridge.disconnect_port().await {
                     Ok(()) => {
                         set_is_connected.set(false);
                         let timestamp = get_timestamp();
@@ -98,7 +103,7 @@ pub fn HomePage() -> impl IntoView {
             });
         } else {
             // Connect
-            let config = tauri_commands::SerialConfig {
+            let config = SerialConfig {
                 port: port.get_untracked(),
                 baud_rate: baud_rate.get_untracked().parse().unwrap_or(9600),
                 data_bits: data_bits.get_untracked(),
@@ -111,7 +116,7 @@ pub fn HomePage() -> impl IntoView {
             let baud = config.baud_rate;
 
             leptos::task::spawn_local(async move {
-                match tauri_commands::connect_port(&config).await {
+                match Bridge.connect_port(config).await {
                     Ok(()) => {
                         set_is_connected.set(true);
                         let timestamp = get_timestamp();
@@ -135,49 +140,23 @@ pub fn HomePage() -> impl IntoView {
     });
 
     // Listen for serial data events
-    tauri_commands::listen_serial_data(move |event| {
-        let mut message = event.data.clone();
+    bridge::on_serial_data(move |event| {
+        let filter = LineFilter {
+            enabled: filter_enabled.get_untracked(),
+            offset: offset.get_untracked().parse().unwrap_or(0),
+            length: length.get_untracked().parse().ok(),
+            exclude: exclude_chars.get_untracked(),
+        };
 
-        // Apply filter if enabled
-        if filter_enabled.get_untracked() {
-            let offset_val: usize = offset.get_untracked().parse().unwrap_or(0);
-            let length_val: Option<usize> = {
-                let l = length.get_untracked();
-                if l.is_empty() {
-                    None
-                } else {
-                    l.parse().ok()
-                }
-            };
-            let exclude = exclude_chars.get_untracked();
-
-            // Apply offset and length
-            if offset_val < message.len() {
-                let end = length_val
-                    .map(|l| (offset_val + l).min(message.len()))
-                    .unwrap_or(message.len());
-                message = message[offset_val..end].to_string();
-            } else {
-                return;
-            }
-
-            // Exclude characters
-            if !exclude.is_empty() {
-                for ch in exclude.chars() {
-                    message = message.replace(ch, "");
-                }
-            }
-
-            if message.is_empty() {
-                return;
-            }
-        }
+        let Some(message) = filter.apply(&event.data) else {
+            return;
+        };
 
         add_entry(ConsoleEntryType::Data, message, event.timestamp);
     });
 
     // Listen for serial error events
-    tauri_commands::listen_serial_error(move |event| {
+    bridge::on_serial_error(move |event| {
         set_is_connected.set(false);
         add_entry(ConsoleEntryType::Error, event.message, event.timestamp);
     });

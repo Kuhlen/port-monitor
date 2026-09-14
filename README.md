@@ -27,16 +27,14 @@ A desktop serial port monitoring application built with **Tauri 2** and **Leptos
 
 - [Rust](https://rustup.rs/) (stable)
 - [Trunk](https://trunkrs.dev/) - `cargo install trunk`
-- [Bun](https://bun.sh/) (or npm/pnpm for Tailwind CSS)
 - [Tauri CLI](https://tauri.app/) - `cargo install tauri-cli`
+
+No Node toolchain needed: Trunk downloads the Tailwind CLI itself
+(pinned in `Trunk.toml`).
 
 ### Development
 
 ```bash
-# Install frontend dependencies
-bun install
-
-# Run in development mode
 cargo tauri dev
 ```
 
@@ -48,15 +46,34 @@ cargo tauri build
 
 ## Project Structure
 
+Single Cargo workspace. Dependencies point one way: both sides depend on
+`crates/core`, and `crates/core` depends on nothing of its own.
+
 ```
+crates/core/            # Shared domain - must compile to wasm32
+├── src/error.rs        #   AppError, crosses IPC typed
+└── src/features/       #   serial, filter, update: DTOs + trait contracts
+
 src/                    # Frontend (Leptos / WASM)
+├── bridge.rs           #   the ONLY place invoke() is called
 ├── pages/              #   Page components
 └── components/         #   UI components (connection, console, filter)
 
 src-tauri/              # Backend (Rust / Tauri)
-├── src/commands/       #   IPC commands (list_ports, connect, disconnect)
-├── src/state.rs        #   Serial connection state management
-└── src/types.rs        #   Shared data structures
+├── src/commands.rs     #   pure delegation, no logic
+├── src/state.rs        #   AppState, implements the core traits
+├── src/infra.rs        #   serialport, reader thread, updater
+└── tests/commands.rs   #   smoke test: every command is registered
+```
+
+IPC types are defined once, in `crates/core`. Changing a trait signature
+breaks both sides at compile time.
+
+### Tests
+
+```bash
+cargo test -p port-monitor-core   # domain logic
+cargo test -p port-monitor        # command registration + capabilities
 ```
 
 ## Recommended IDE Setup

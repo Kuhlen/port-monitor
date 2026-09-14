@@ -1,7 +1,7 @@
 mod app;
+mod bridge;
 mod components;
 mod pages;
-pub mod tauri_commands;
 
 use app::*;
 use leptos::prelude::*;
