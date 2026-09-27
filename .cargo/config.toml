@@ -1,0 +1,17 @@
+# Windows 7 targets are tier 3: std is rebuilt from source (rust-src).
+# Usage: `cargo win7 -p app` (MSVC, on Windows/CI) or `cargo win7-gnu -p app` (Fedora + mingw).
+[alias]
+win7 = "build --release --target i686-win7-windows-msvc -Zbuild-std=std,panic_unwind"
+win7-gnu = "build --release --target i686-win7-windows-gnu -Zbuild-std=std,panic_unwind"
+
+[target.i686-win7-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.i686-win7-windows-gnu]
+linker = "i686-w64-mingw32-gcc"
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# C code (e.g. ring) must use the mingw compiler for the win7-gnu target.
+[env]
+CC_i686_win7_windows_gnu = "i686-w64-mingw32-gcc"
+AR_i686_win7_windows_gnu = "i686-w64-mingw32-ar"
