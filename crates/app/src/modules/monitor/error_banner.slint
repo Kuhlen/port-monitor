@@ -25,7 +25,7 @@ export component ErrorBanner inherits Rectangle {
                 font-size: 12px;
                 border-color: #8a5249;
                 text-color: #ffc2b8;
-                clicked => { MonitorState.retry(); }
+                clicked => { MonitorState.connect(); }
             }
         }
         VerticalLayout {

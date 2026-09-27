@@ -11,6 +11,7 @@ export component Btn inherits Rectangle {
     in property <length> font-size: 13px;
     in property <int> font-weight: 500;
     in property <length> padding-x: 12px;
+    in property <length> icon-size: 14px;
     callback clicked();
     property <color> fg: !root.enabled && root.primary ? Theme.faint : root.primary ? Theme.on-accent : root.text-color;
     height: 28px;
@@ -37,9 +38,10 @@ export component Btn inherits Rectangle {
         alignment: center;
         if root.icon.width > 0: VerticalLayout {
             alignment: center;
-            Image { source: root.icon; width: 14px; height: 14px; colorize: root.fg; }
+            Image { source: root.icon; width: root.icon-size; height: root.icon-size; colorize: root.fg; }
         }
-        Text {
+        // icon-only: no text slot, else spacing pushes the icon off-center
+        if root.text != "": Text {
             text: root.text;
             color: root.fg;
             font-size: root.font-size;

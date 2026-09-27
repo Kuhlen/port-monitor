@@ -2,7 +2,7 @@
 
 use domain::AppError;
 use domain::filter::LineFilter;
-use domain::serial::{DataBits, FlowControl, Parity, PortInfo, SerialConfig, StopBits};
+use domain::serial::{BaudRate, DataBits, FlowControl, Parity, PortInfo, SerialConfig, StopBits};
 
 /// combo/segment index → option; out of range falls back to the default
 pub(crate) fn pick<T: Copy + Default>(all: &[T], index: i32) -> T {
@@ -67,15 +67,9 @@ pub fn config_from_form(
         .ok()
         .and_then(|i| ports.get(i))
         .ok_or_else(|| AppError::Port("no port selected".into()))?;
-    let baud_rate = baud
-        .trim()
-        .parse::<u32>()
-        .ok()
-        .filter(|&b| b > 0)
-        .ok_or_else(|| AppError::Port(format!("invalid baud rate: {baud}")))?;
     Ok(SerialConfig {
         port: port.name.clone(),
-        baud_rate,
+        baud_rate: BaudRate::parse(baud)?,
         data_bits: frame.data_bits,
         parity: frame.parity,
         stop_bits: frame.stop_bits,

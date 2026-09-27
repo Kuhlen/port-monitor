@@ -3,12 +3,12 @@ use std::sync::mpsc;
 use data::serial_port::SerialPortLink;
 use domain::AppError;
 use domain::link::SerialPorts;
-use domain::serial::{DataBits, FlowControl, Parity, SerialConfig, StopBits};
+use domain::serial::{BaudRate, DataBits, FlowControl, Parity, SerialConfig, StopBits};
 
 fn config(port: &str) -> SerialConfig {
     SerialConfig {
         port: port.into(),
-        baud_rate: 9600,
+        baud_rate: BaudRate::parse("9600").expect("baud"),
         data_bits: DataBits::Eight,
         parity: Parity::None,
         stop_bits: StopBits::One,

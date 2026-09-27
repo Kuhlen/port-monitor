@@ -12,23 +12,6 @@ component Labeled inherits VerticalLayout {
     @children
 }
 
-component IconButton inherits Rectangle {
-    in property <image> icon;
-    in property <bool> enabled: true;
-    // rescan = boxed, about = bare
-    in property <bool> boxed;
-    callback clicked();
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    border-width: root.boxed ? 1px : 0;
-    border-color: Theme.border;
-    background: root.boxed ? (touch.has-hover && root.enabled ? #262b31 : Theme.control) : touch.has-hover && root.enabled ? Theme.control : transparent;
-    opacity: root.enabled ? 1 : 0.4;
-    Image { source: root.icon; }
-    touch := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
-}
-
 component StatusPill inherits Rectangle {
     property <ConnState> s: MonitorState.conn-state;
     height: 28px;
@@ -89,9 +72,13 @@ export component Toolbar inherits Rectangle {
         // empty label = mockup margin-top 14px: sits on the controls' line
         Labeled {
             label: "";
-            IconButton {
-                boxed: true;
+            Btn {
+                width: 28px;
+                padding-x: 0;
+                background: Theme.control;
+                text-color: Theme.text-soft;
                 icon: @image-url("../../../assets/icons/refresh.svg");
+                accessible-label: "Rescan ports";
                 enabled: idle;
                 clicked => { MonitorState.scan(); }
             }
@@ -146,8 +133,14 @@ export component Toolbar inherits Rectangle {
         }
         Labeled {
             label: "";
-            IconButton {
+            Btn {
+                width: 28px;
+                padding-x: 0;
+                border-width: 0;
+                text-color: Theme.muted;
                 icon: @image-url("../../../assets/icons/info.svg");
+                icon-size: 16px;
+                accessible-label: "About";
                 clicked => { about.show(); }
             }
         }

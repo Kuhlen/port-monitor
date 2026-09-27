@@ -116,7 +116,8 @@ fn retry_after_refused_connect_connects() {
     state(&ui).invoke_connect();
     settle(&c, &ui);
     *ports.refuse.lock().expect("refuse") = None;
-    state(&ui).invoke_retry();
+    // banner Retry = plain connect from the failed state
+    state(&ui).invoke_connect();
     settle(&c, &ui);
     assert_eq!(state(&ui).get_conn_state(), ConnState::Connected);
     ports.emit(line("ok"));

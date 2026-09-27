@@ -84,7 +84,6 @@ impl MonitorController {
         };
         state.on_scan(on(Self::scan));
         state.on_connect(on(|c| c.report("Connection failed", c.connect())));
-        state.on_retry(on(|c| c.report("Connection failed", c.connect())));
         state.on_disconnect(on(|c| c.report("Disconnect failed", c.disconnect())));
         state.on_dismiss_banner(on(Self::dismiss_banner));
         state.on_filter_changed(on(Self::refresh_preview));

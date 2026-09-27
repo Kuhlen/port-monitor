@@ -2,7 +2,7 @@ use app::modules::monitor::monitor_rules::{
     Frame, banner_text, config_from_form, filter_from_form, pick_port, port_label,
 };
 use domain::AppError;
-use domain::serial::{DataBits, FlowControl, Parity, PortInfo, SerialConfig, StopBits};
+use domain::serial::{BaudRate, DataBits, FlowControl, Parity, PortInfo, SerialConfig, StopBits};
 
 fn port(name: &str) -> PortInfo {
     PortInfo {
@@ -35,7 +35,7 @@ fn form_builds_config() {
         config,
         SerialConfig {
             port: "/dev/ttyUSB0".into(),
-            baud_rate: 115_200,
+            baud_rate: BaudRate::parse("115200").expect("baud"),
             data_bits: DataBits::Eight,
             parity: Parity::None,
             stop_bits: StopBits::One,

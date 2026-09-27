@@ -17,7 +17,7 @@ use serialport::SerialPort;
 const READ_TIMEOUT: Duration = Duration::from_millis(100);
 const READ_BUF: usize = 1024;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SerialPortLink;
 
 impl SerialPorts for SerialPortLink {
@@ -37,7 +37,7 @@ impl SerialPorts for SerialPortLink {
         config: &SerialConfig,
         events: Sender<LinkEvent>,
     ) -> Result<Box<dyn Link>, AppError> {
-        let port = serialport::new(&config.port, config.baud_rate)
+        let port = serialport::new(&config.port, config.baud_rate.get())
             .data_bits(data_bits(config.data_bits))
             .parity(parity(config.parity))
             .stop_bits(stop_bits(config.stop_bits))
