@@ -1,0 +1,133 @@
+import { ListView } from "std-widgets.slint";
+import { Theme } from "../../theme.slint";
+import { MonitorState, Tag } from "monitor_state.slint";
+import { Btn } from "controls.slint";
+
+component Counter inherits HorizontalLayout {
+    in property <string> tag;
+    in property <color> tint;
+    in property <int> count;
+    spacing: 4px;
+    Text { text: root.tag; color: root.tint; font-size: 12px; vertical-alignment: center; }
+    Text { text: root.count; color: Theme.muted; font-size: 12px; vertical-alignment: center; }
+}
+
+export component Console inherits VerticalLayout {
+    pure function tag-text(tag: Tag) -> string {
+        if tag == Tag.rx { return "RX"; }
+        if tag == Tag.tx { return "TX"; }
+        if tag == Tag.inf { return "INF"; }
+        if tag == Tag.wrn { return "WRN"; }
+        return "ERR";
+    }
+    pure function tag-color(tag: Tag) -> color {
+        if tag == Tag.rx { return Theme.rx; }
+        if tag == Tag.tx { return Theme.tx; }
+        if tag == Tag.inf { return Theme.inf; }
+        if tag == Tag.wrn { return Theme.wrn; }
+        return Theme.err;
+    }
+    // mockup TAG table: message color + row tint
+    pure function text-color(tag: Tag) -> color {
+        if tag == Tag.tx { return #dcc8ff; }
+        if tag == Tag.inf { return Theme.text-soft; }
+        if tag == Tag.wrn { return #f3d9a6; }
+        if tag == Tag.err { return #ffc2b8; }
+        return Theme.text;
+    }
+    pure function row-tint(tag: Tag) -> color {
+        if tag == Tag.tx { return #c9a0ff12; }
+        if tag == Tag.wrn { return #f0b64d12; }
+        if tag == Tag.err { return #ff8a781a; }
+        return transparent;
+    }
+
+    // ponytail: rows.length freezes at the cap, counters join the trigger; INF/WRN at cap won't scroll — Rust-side row-version counter if it matters
+    property <int> activity: MonitorState.rows.length + MonitorState.rx-count + MonitorState.tx-count + MonitorState.err-count;
+    changed activity => {
+        if MonitorState.auto-scroll {
+            list.content-y = min(0px, list.visible-height - list.content-height);
+        }
+    }
+
+    HorizontalLayout {
+        height: 32px;
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 12px;
+        Text { text: "Console"; font-size: 12px; font-weight: 600; color: Theme.text; vertical-alignment: center; }
+        Counter { tag: "RX"; tint: Theme.rx; count: MonitorState.rx-count; }
+        Counter { tag: "TX"; tint: Theme.tx; count: MonitorState.tx-count; }
+        Counter { tag: "ERR"; tint: Theme.err; count: MonitorState.err-count; }
+        Rectangle { horizontal-stretch: 1; }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 0;
+            Rectangle {
+                height: 22px;
+                border-radius: 11px;
+                background: MonitorState.auto-scroll ? Theme.accent-soft : transparent;
+                border-color: MonitorState.auto-scroll ? transparent : Theme.border;
+                border-width: 1px;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    spacing: 4px;
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle { width: 6px; height: 6px; border-radius: 3px; background: MonitorState.auto-scroll ? Theme.accent : Theme.faint; }
+                    }
+                    Text { text: "Auto-scroll"; font-size: 11px; font-weight: 500; vertical-alignment: center; color: MonitorState.auto-scroll ? Theme.accent-text : Theme.muted; }
+                }
+                TouchArea { clicked => { MonitorState.auto-scroll = !MonitorState.auto-scroll; } }
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Btn {
+                text: "Clear";
+                height: 22px;
+                border-radius: 5px;
+                padding-x: 8px;
+                font-size: 11px;
+                font-weight: 400;
+                text-color: Theme.text-soft;
+                clicked => { MonitorState.clear(); }
+            }
+        }
+    }
+    HorizontalLayout {
+        vertical-stretch: 1;
+        padding-left: 12px;
+        padding-right: 12px;
+        Rectangle {
+            background: Theme.console-bg;
+            border-color: Theme.console-border;
+            border-width: 1px;
+            border-radius: 8px;
+            clip: true;
+            list := ListView {
+                for row in MonitorState.rows: Rectangle {
+                    min-height: 21px;
+                    background: root.row-tint(row.tag);
+                    HorizontalLayout {
+                        padding-left: 10px;
+                        padding-right: 10px;
+                        spacing: 10px;
+                        Text { text: row.time; font-family: Theme.mono; font-size: 12px; color: Theme.faint; vertical-alignment: top; }
+                        Text { width: 28px; text: root.tag-text(row.tag); font-family: Theme.mono; font-size: 12px; font-weight: 700; color: root.tag-color(row.tag); vertical-alignment: top; }
+                        // wraps instead of eliding: a long line no longer gets cut off
+                        Text { horizontal-stretch: 1; text: row.text; font-family: Theme.mono; font-size: 12px; color: root.text-color(row.tag); wrap: char-wrap; vertical-alignment: top; }
+                    }
+                }
+            }
+            // old app empty state
+            if MonitorState.rows.length == 0: VerticalLayout {
+                alignment: center;
+                spacing: 4px;
+                Text { text: "Waiting for data…"; font-size: 12px; color: Theme.faint; horizontal-alignment: center; }
+                Text { text: "Connect to a serial port to start monitoring"; font-size: 11px; color: Theme.faint; horizontal-alignment: center; }
+            }
+        }
+    }
+}

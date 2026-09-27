@@ -1,0 +1,50 @@
+import { Theme } from "../../theme.slint";
+import { MonitorState } from "monitor_state.slint";
+import { Btn } from "controls.slint";
+
+component Fact inherits HorizontalLayout {
+    in property <string> key;
+    in property <string> value;
+    Text { text: root.key; font-size: 12px; color: Theme.muted; }
+    Text { text: root.value; font-size: 12px; color: Theme.text; horizontal-alignment: right; }
+}
+
+export component AboutDialog inherits PopupWindow {
+    width: 300px;
+    close-policy: close-on-click-outside;
+    Rectangle {
+        background: Theme.popup;
+        border-color: Theme.border;
+        border-width: 1px;
+        border-radius: 10px;
+        drop-shadow-blur: 32px;
+        drop-shadow-offset-y: 12px;
+        drop-shadow-color: #00000080;
+        VerticalLayout {
+            padding: 18px;
+            spacing: 10px;
+            HorizontalLayout {
+                spacing: 12px;
+                Image { source: @image-url("../../../assets/app_icon.png"); width: 40px; height: 40px; }
+                VerticalLayout {
+                    alignment: center;
+                    Text { text: "Port Monitor"; font-size: 15px; font-weight: 600; color: Theme.text; }
+                    Text { text: "Serial port monitor"; font-size: 12px; color: Theme.muted; }
+                }
+            }
+            Fact { key: "Version"; value: MonitorState.app-version; }
+            Fact { key: "Author"; value: MonitorState.app-author; }
+            Fact { key: "Built with"; value: "Rust · Slint"; }
+            HorizontalLayout {
+                alignment: end;
+                Btn {
+                    text: "Close";
+                    height: 32px;
+                    padding-x: 16px;
+                    background: Theme.control;
+                    clicked => { root.close(); }
+                }
+            }
+        }
+    }
+}

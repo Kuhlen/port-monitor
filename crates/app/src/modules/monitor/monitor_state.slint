@@ -1,0 +1,44 @@
+export enum ConnState { disconnected, connecting, connected, failed }
+export enum Tag { rx, tx, inf, wrn, err }
+export struct ConsoleRow { time: string, tag: Tag, text: string }
+
+// in = pushed from Rust; in-out = form state owned by Slint, read by Rust
+export global MonitorState {
+    in property <ConnState> conn-state;
+    in property <[string]> ports;
+    in-out property <int> port-index: -1;
+    in-out property <string> baud: "9600";
+    in-out property <int> data-bits-index: 3;
+    in-out property <int> parity-index: 0;
+    in-out property <int> stop-bits-index: 0;
+    in-out property <int> flow-index: 0;
+    in property <string> frame-label: "8N1 · no flow";
+    in property <string> banner-title;
+    in property <string> banner-hint;
+    in-out property <bool> filter-on;
+    in-out property <string> skip: "0";
+    in-out property <string> keep;
+    in-out property <string> remove;
+    in property <string> preview-skipped;
+    in property <string> preview-kept;
+    in property <string> preview-cut;
+    in property <[ConsoleRow]> rows;
+    in property <int> rx-count;
+    in property <int> tx-count;
+    in property <int> err-count;
+    in-out property <bool> auto-scroll: true;
+    in-out property <string> send-text;
+    in-out property <int> line-ending-index: 3;
+    in property <string> app-version;
+    in property <string> app-author;
+
+    callback scan();
+    callback connect();
+    callback disconnect();
+    callback retry();
+    callback dismiss-banner();
+    callback send(string, int);
+    callback clear();
+    callback filter-changed();
+    callback frame-changed();
+}

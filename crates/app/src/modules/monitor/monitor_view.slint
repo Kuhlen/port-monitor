@@ -1,0 +1,14 @@
+import { MonitorState, ConnState } from "monitor_state.slint";
+import { Toolbar } from "toolbar.slint";
+import { ErrorBanner } from "error_banner.slint";
+import { FilterBar } from "filter_bar.slint";
+import { Console } from "console.slint";
+import { SendBar } from "send_bar.slint";
+
+export component MonitorView inherits VerticalLayout {
+    Toolbar { }
+    if MonitorState.conn-state == ConnState.failed: ErrorBanner { }
+    FilterBar { }
+    Console { vertical-stretch: 1; }
+    SendBar { }
+}

@@ -1,0 +1,33 @@
+[package]
+name = "app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "port-monitor"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+data.workspace = true
+domain.workspace = true
+
+# Win7-era PCs often lack OpenGL 3
+[target.'cfg(windows)'.dependencies]
+slint = { workspace = true, features = ["renderer-software"] }
+[target.'cfg(not(windows))'.dependencies]
+slint = { workspace = true, features = ["renderer-femtovg"] }
+
+[dev-dependencies]
+i-slint-backend-testing = "=1.18.1"
+
+[build-dependencies]
+slint-build.workspace = true
+
+[lints]
+workspace = true

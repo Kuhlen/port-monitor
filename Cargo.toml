@@ -1,20 +1,30 @@
-[package]
-name = "port-monitor-ui"
-version = "0.3.2"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[dependencies]
-leptos = { version = "0.8", features = ["csr"] }
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-web-sys = { version = "0.3", features = ["Window"] }
-serde = { version = "1", features = ["derive"] }
-serde-wasm-bindgen = "0.6"
-console_error_panic_hook = "0.1.7"
-gloo-timers = { version = "0.3", features = ["futures"] }
-port-monitor-core = { path = "crates/core" }
-
 [workspace]
-members = ["src-tauri", "crates/core"]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.4.0"
+edition = "2024"
+authors = ["kuhlen"]
+publish = false
+
+[workspace.dependencies]
+data = { path = "crates/data" }
+domain = { path = "crates/domain" }
+# renderer picked per OS in crates/app/Cargo.toml
+slint = { version = "=1.18.1", default-features = false, features = ["std", "compat-1-2", "backend-winit"] }
+slint-build = "=1.18.1"
+
+# Win7 compatibility: see patches/README.md
+[patch.crates-io]
+i-slint-backend-winit = { path = "patches/i-slint-backend-winit" }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+dbg_macro = "warn"
+todo = "warn"

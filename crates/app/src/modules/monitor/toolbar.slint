@@ -1,0 +1,155 @@
+import { Theme } from "../../theme.slint";
+import { MonitorState, ConnState } from "monitor_state.slint";
+import { FramePopup } from "frame_popup.slint";
+import { AboutDialog } from "about_dialog.slint";
+import { Btn, Select } from "controls.slint";
+
+component Labeled inherits VerticalLayout {
+    in property <string> label;
+    spacing: 2px;
+    alignment: center;
+    Text { text: root.label; font-size: 10px; color: Theme.muted; letter-spacing: 0.4px; }
+    @children
+}
+
+component IconButton inherits Rectangle {
+    in property <image> icon;
+    in property <bool> enabled: true;
+    // rescan = boxed, about = bare
+    in property <bool> boxed;
+    callback clicked();
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border-width: root.boxed ? 1px : 0;
+    border-color: Theme.border;
+    background: root.boxed ? (touch.has-hover && root.enabled ? #262b31 : Theme.control) : touch.has-hover && root.enabled ? Theme.control : transparent;
+    opacity: root.enabled ? 1 : 0.4;
+    Image { source: root.icon; }
+    touch := TouchArea { enabled: root.enabled; clicked => { root.clicked(); } }
+}
+
+component StatusPill inherits Rectangle {
+    property <ConnState> s: MonitorState.conn-state;
+    height: 28px;
+    border-radius: 14px;
+    background: s == ConnState.connected ? Theme.accent-soft : #22262b;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 6px;
+        alignment: center;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 8px;
+                height: 8px;
+                border-radius: 4px;
+                background: s == ConnState.connected ? Theme.accent
+                    : s == ConnState.connecting ? Theme.wrn
+                    : s == ConnState.failed ? Theme.err : Theme.faint;
+            }
+        }
+        Text {
+            vertical-alignment: center;
+            font-weight: 500;
+            color: s == ConnState.connected ? Theme.accent-text : Theme.text-soft;
+            text: s == ConnState.connected ? "Connected"
+                : s == ConnState.connecting ? "Connecting…"
+                : s == ConnState.failed ? "Failed" : "Disconnected";
+        }
+    }
+}
+
+export component Toolbar inherits Rectangle {
+    // form locked while a link is open or opening
+    property <bool> idle: MonitorState.conn-state == ConnState.disconnected || MonitorState.conn-state == ConnState.failed;
+    height: 56px;
+    background: Theme.surface;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Theme.divider; }
+
+    frame := FramePopup { x: frame-chip.absolute-position.x - root.absolute-position.x; y: 56px; }
+    about := AboutDialog { x: root.width - self.width - 12px; y: 56px; }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 8px;
+        Labeled {
+            label: "PORT";
+            Select {
+                width: 220px;
+                enabled: idle;
+                dim-disabled: false;
+                outline: MonitorState.conn-state == ConnState.failed ? Theme.err : Theme.border;
+                model: MonitorState.ports;
+                current-index <=> MonitorState.port-index;
+            }
+        }
+        // empty label = mockup margin-top 14px: sits on the controls' line
+        Labeled {
+            label: "";
+            IconButton {
+                boxed: true;
+                icon: @image-url("../../../assets/icons/refresh.svg");
+                enabled: idle;
+                clicked => { MonitorState.scan(); }
+            }
+        }
+        Labeled {
+            label: "BAUD";
+            Select {
+                width: 96px;
+                enabled: idle;
+                dim-disabled: false;
+                // index 12 = 9600, the old default (MonitorState.baud)
+                model: ["50", "75", "110", "134", "150", "200", "300", "600", "1200", "1800", "2400", "4800", "9600", "19200", "28800", "38400", "57600", "76800", "115200", "230400", "460800", "576000", "921600"];
+                current-index: 12;
+                selected(value) => { MonitorState.baud = value; }
+            }
+        }
+        Labeled {
+            label: "FRAME";
+            frame-chip := Rectangle {
+                height: 28px;
+                border-radius: 6px;
+                background: Theme.control;
+                border-color: Theme.border;
+                border-width: 1px;
+                HorizontalLayout {
+                    padding-left: 8px;
+                    padding-right: 8px;
+                    spacing: 6px;
+                    Text { text: MonitorState.frame-label; font-family: Theme.mono; font-size: 12px; color: Theme.text; vertical-alignment: center; }
+                    Image { source: @image-url("../../../assets/icons/chevron_down.svg"); width: 12px; }
+                }
+                TouchArea { enabled: idle; clicked => { frame.show(); } }
+            }
+        }
+        Rectangle { horizontal-stretch: 1; }
+        Labeled { label: ""; StatusPill { } }
+        Labeled {
+            label: "";
+            if MonitorState.conn-state == ConnState.connected: Btn {
+                text: "Disconnect";
+                border-color: #5a3a36;
+                text-color: #ffb3a7;
+                clicked => { MonitorState.disconnect(); }
+            }
+            if MonitorState.conn-state != ConnState.connected: Btn {
+                text: "Connect";
+                primary: true;
+                padding-x: 14px;
+                enabled: idle && MonitorState.ports.length > 0;
+                clicked => { MonitorState.connect(); }
+            }
+        }
+        Labeled {
+            label: "";
+            IconButton {
+                icon: @image-url("../../../assets/icons/info.svg");
+                clicked => { about.show(); }
+            }
+        }
+    }
+}

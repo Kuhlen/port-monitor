@@ -1,0 +1,94 @@
+import { Theme } from "../../theme.slint";
+import { MonitorState } from "monitor_state.slint";
+
+component Segmented inherits VerticalLayout {
+    in property <string> label;
+    in property <[string]> options;
+    in-out property <int> selected;
+    callback changed();
+    spacing: 4px;
+
+    Text { text: root.label; font-size: 11px; color: Theme.muted; }
+    Rectangle {
+        height: 30px;
+        background: #111417;
+        border-color: Theme.divider;
+        border-width: 1px;
+        border-radius: 7px;
+        HorizontalLayout {
+            padding: 2px;
+            spacing: 2px;
+            for option[i] in root.options: Rectangle {
+                border-radius: 5px;
+                background: i == root.selected ? Theme.accent : transparent;
+                Text {
+                    text: option;
+                    font-size: 12px;
+                    font-weight: i == root.selected ? 600 : 400;
+                    color: i == root.selected ? Theme.on-accent : Theme.text-soft;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                TouchArea {
+                    clicked => {
+                        root.selected = i;
+                        root.changed();
+                    }
+                }
+            }
+        }
+    }
+}
+
+// segment order = domain ALL order (serial.rs)
+export component FramePopup inherits PopupWindow {
+    width: 330px;
+    close-policy: close-on-click-outside;
+    Rectangle {
+        background: Theme.popup;
+        border-color: Theme.border;
+        border-width: 1px;
+        border-radius: 10px;
+        drop-shadow-blur: 32px;
+        drop-shadow-offset-y: 12px;
+        drop-shadow-color: #00000080;
+        VerticalLayout {
+            padding: 14px;
+            spacing: 12px;
+            HorizontalLayout {
+                Text { text: "Frame settings"; font-size: 13px; font-weight: 600; color: Theme.text; }
+                Text {
+                    text: MonitorState.frame-label;
+                    font-family: Theme.mono;
+                    font-size: 11px;
+                    color: Theme.muted;
+                    horizontal-alignment: right;
+                }
+            }
+            Segmented {
+                label: "Data bits";
+                options: ["5", "6", "7", "8"];
+                selected <=> MonitorState.data-bits-index;
+                changed => { MonitorState.frame-changed(); }
+            }
+            Segmented {
+                label: "Parity";
+                options: ["None", "Even", "Odd"];
+                selected <=> MonitorState.parity-index;
+                changed => { MonitorState.frame-changed(); }
+            }
+            Segmented {
+                label: "Stop bits";
+                options: ["1", "2"];
+                selected <=> MonitorState.stop-bits-index;
+                changed => { MonitorState.frame-changed(); }
+            }
+            Segmented {
+                label: "Flow control";
+                options: ["None", "RTS/CTS", "XON/XOFF"];
+                selected <=> MonitorState.flow-index;
+                changed => { MonitorState.frame-changed(); }
+            }
+        }
+    }
+}

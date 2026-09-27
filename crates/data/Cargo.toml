@@ -1,0 +1,15 @@
+[package]
+name = "data"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+domain.workspace = true
+# no libudev: Linux sysfs scan still reports USB product names
+serialport = { version = "4.10", default-features = false }
+
+[lints]
+workspace = true

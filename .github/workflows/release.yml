@@ -3,79 +3,147 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  # dry run: builds artifacts, publishes nothing
+  workflow_dispatch:
 
 jobs:
-  release:
+  shims:
+    runs-on: ubuntu-latest
     permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: macos-latest
-            args: --target aarch64-apple-darwin
-            rust_target: aarch64-apple-darwin
-          - platform: macos-latest
-            args: --target x86_64-apple-darwin
-            rust_target: x86_64-apple-darwin
-          - platform: ubuntu-22.04
-            args: ""
-            rust_target: ""
-          - platform: windows-latest
-            args: ""
-            rust_target: ""
-
-    runs-on: ${{ matrix.platform }}
-
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
+      contents: read
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown,${{ matrix.rust_target }}
-
-      - name: Install Trunk
-        uses: jetli/trunk-action@v0.5.0
-        with:
-          version: latest
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install dependencies (Ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+      - name: Install mingw i686
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libudev-dev
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2"
-
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          sudo apt-get update -y
+          sudo apt-get install -y gcc-mingw-w64-i686
+      - name: Build shim DLLs
+        run: bash win7-shims/build.sh "$PWD/dist/shims"
+      - uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Port Monitor ${{ github.ref_name }}"
-          releaseBody: |
-            See the assets to download this version and install.
+          name: win7-shims
+          path: dist/shims/*.dll
+          if-no-files-found: error
+          retention-days: 7
 
-            ### macOS Users
-            If you see **"App is damaged and can't be opened"**, run this command in Terminal:
-            ```
-            xattr -cr /Applications/Port\ Monitor.app
-            ```
-            Then open the app again. This happens because the app is not signed with an Apple Developer certificate.
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
+  windows:
+    needs: shims
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - name: Test
+        run: cargo test --workspace
+      - name: Build Win7 exe (MSVC)
+        run: cargo win7 -p app
+      - uses: actions/download-artifact@v4
+        with:
+          name: win7-shims
+          path: target/win7-shims
+      - name: Zip
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"' -CaseSensitive).Matches[0].Groups[1].Value
+          $dir = "dist/port-monitor-v$v-windows-x86"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Copy-Item target/i686-win7-windows-msvc/release/port-monitor.exe $dir
+          Copy-Item target/win7-shims/*.dll $dir
+          Copy-Item packaging/README-windows.txt "$dir/README.txt"
+          Compress-Archive -Path "$dir/*" -DestinationPath "$dir.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  macos:
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain + targets
+        run: |
+          rustup toolchain install
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - name: Test
+        run: cargo test --workspace
+      - name: Bundle
+        run: bash scripts/bundle-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: System deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+      - name: Toolchain
+        run: rustup toolchain install
+      - name: Test
+        run: cargo test --workspace
+      - name: Build
+        run: cargo build --release -p app
+      - name: Tar
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          dir="dist/port-monitor-v$v-linux-x86_64"
+          mkdir -p "$dir"
+          cp target/release/port-monitor "$dir/"
+          cp packaging/README-linux.txt "$dir/README.txt"
+          tar -C dist -czf "$dir.tar.gz" "$(basename "$dir")"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [windows, macos, linux]
+    # manual runs must not publish
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag must match workspace version
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ "${GITHUB_REF_NAME#v}" != "$v" ]; then
+            echo "::error::tag $GITHUB_REF_NAME != Cargo.toml $v"; exit 1
+          fi
+      - name: Release notes = annotated tag message
+        run: |
+          git fetch --force origin "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          # lightweight tag would give the commit message; refuse it
+          if [ "$(git cat-file -t "$GITHUB_REF_NAME")" != "tag" ]; then
+            echo "::error::$GITHUB_REF_NAME must be annotated (git tag -a)"; exit 1
+          fi
+          git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$GITHUB_REF_NAME" > notes.md
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.tar.gz \
+            --title "Port Monitor $GITHUB_REF_NAME" \
+            --notes-file notes.md

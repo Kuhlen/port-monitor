@@ -1,0 +1,22 @@
+import "../assets/fonts/IBMPlexSans[wdth,wght].ttf";
+import "../assets/fonts/JetBrainsMono-Regular.ttf";
+import "../assets/fonts/JetBrainsMono-Bold.ttf";
+import { Theme } from "theme.slint";
+import { MonitorState, ConnState, Tag, ConsoleRow } from "modules/monitor/monitor_state.slint";
+import { MonitorView } from "modules/monitor/monitor_view.slint";
+
+export { MonitorState, ConnState, Tag, ConsoleRow }
+
+export component AppWindow inherits Window {
+    title: "Port Monitor";
+    icon: @image-url("../assets/app_icon.png");
+    min-width: 800px;
+    max-width: 800px;
+    min-height: 600px;
+    max-height: 600px;
+    background: Theme.bg;
+    default-font-family: Theme.sans;
+
+    // Palette is read-only in 1.18.1: std widgets keep fluent-dark colors
+    MonitorView { }
+}

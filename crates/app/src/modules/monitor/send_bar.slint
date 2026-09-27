@@ -1,0 +1,44 @@
+import { Theme } from "../../theme.slint";
+import { MonitorState, ConnState } from "monitor_state.slint";
+import { Btn, Field, Select } from "controls.slint";
+
+export component SendBar inherits HorizontalLayout {
+    property <bool> live: MonitorState.conn-state == ConnState.connected;
+    height: 56px;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    spacing: 8px;
+    Field {
+        large: true;
+        horizontal-stretch: 1;
+        enabled: live;
+        text <=> MonitorState.send-text;
+        placeholder: live ? "Type data to send — Enter to send" : "Connect to send data";
+        accepted(text) => { MonitorState.send(text, MonitorState.line-ending-index); }
+    }
+    Select {
+        width: 76px;
+        height: 36px;
+        border-radius: 8px;
+        padding-x: 10px;
+        font-family: Theme.mono;
+        font-size: 12px;
+        enabled: live;
+        // order = LineEnding::ALL
+        model: ["None", "LF", "CR", "CRLF"];
+        current-index <=> MonitorState.line-ending-index;
+    }
+    Btn {
+        text: "Send";
+        primary: true;
+        height: 36px;
+        border-radius: 8px;
+        padding-x: 16px;
+        enabled: live;
+        // MainError: disabled Send has no icon
+        icon: live ? @image-url("../../../assets/icons/send.svg") : @image-url("");
+        clicked => { MonitorState.send(MonitorState.send-text, MonitorState.line-ending-index); }
+    }
+}

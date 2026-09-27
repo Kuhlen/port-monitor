@@ -1,0 +1,103 @@
+import { Theme } from "../../theme.slint";
+import { MonitorState } from "monitor_state.slint";
+import { Field, Toggle } from "controls.slint";
+
+// no strike-through in Slint Text: 1px line over the glyphs
+component Struck inherits Rectangle {
+    in property <string> text;
+    Text { text: root.text; font-family: Theme.mono; font-size: 11px; color: Theme.faint; vertical-alignment: center; overflow: elide; }
+    Rectangle { y: parent.height / 2; height: 1px; background: Theme.faint; }
+}
+
+// label + input + optional suffix, sized to content: only Preview grows
+component LabeledField inherits HorizontalLayout {
+    in property <string> before;
+    in property <string> after;
+    in property <length> field-width;
+    in property <string> placeholder;
+    in-out property <string> value;
+    spacing: 4px;
+    horizontal-stretch: 0;
+    Text { text: root.before; font-size: 12px; color: Theme.text-soft; vertical-alignment: center; }
+    VerticalLayout {
+        alignment: center;
+        Field {
+            width: root.field-width;
+            text <=> root.value;
+            placeholder: root.placeholder;
+            edited => { MonitorState.filter-changed(); }
+        }
+    }
+    if root.after != "": Text { text: root.after; font-size: 12px; color: Theme.text-soft; vertical-alignment: center; }
+}
+
+export component FilterBar inherits Rectangle {
+    height: 44px;
+    background: Theme.filter-bg;
+    Rectangle { y: parent.height - 1px; height: 1px; background: Theme.divider; }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 12px;
+        spacing: 10px;
+        Toggle {
+            text: "Filter";
+            checked <=> MonitorState.filter-on;
+            toggled => { MonitorState.filter-changed(); }
+        }
+        if !MonitorState.filter-on: Text {
+            text: "Off — lines shown as received";
+            font-size: 12px;
+            color: Theme.faint;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        if MonitorState.filter-on: HorizontalLayout {
+            spacing: 10px;
+            horizontal-stretch: 1;
+            LabeledField { before: "Skip first"; after: "chars"; field-width: 34px; value <=> MonitorState.skip; }
+            LabeledField { before: "keep"; field-width: 34px; placeholder: "all"; value <=> MonitorState.keep; }
+            // remove field and Preview split the rest 50/50: both preferred 0, stretch 1
+            HorizontalLayout {
+                spacing: 0px;
+                horizontal-stretch: 1;
+                Text { text: "remove"; font-size: 12px; color: Theme.text-soft; vertical-alignment: center; }
+                Rectangle { width: 4px; }
+                VerticalLayout {
+                    alignment: center;
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    Field {
+                        min-width: 44px;
+                        text <=> MonitorState.remove;
+                        edited => { MonitorState.filter-changed(); }
+                    }
+                }
+                Rectangle { width: 10px; }
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    // same min as the remove field, so the split stays equal
+                    min-width: 44px;
+                    alignment: center;
+                    Rectangle {
+                        height: 24px;
+                        border-radius: 5px;
+                        background: Theme.popup;
+                        clip: true;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            spacing: 0px;
+                            Text { text: "Preview"; font-size: 11px; color: Theme.muted; vertical-alignment: center; overflow: elide; }
+                            Rectangle { width: 8px; }
+                            Struck { text: MonitorState.preview-skipped; }
+                            Text { text: MonitorState.preview-kept; font-family: Theme.mono; font-size: 11px; color: Theme.text; vertical-alignment: center; overflow: elide; }
+                            Struck { text: MonitorState.preview-cut; }
+                            Rectangle { horizontal-stretch: 1; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

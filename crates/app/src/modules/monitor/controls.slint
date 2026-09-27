@@ -1,0 +1,334 @@
+import { Theme } from "../../theme.slint";
+
+// std widgets take the OS accent + fluent sizes; these follow the mockup instead
+
+export component Btn inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> primary;
+    in property <bool> enabled: true;
+    in property <color> text-color: Theme.text;
+    in property <length> font-size: 13px;
+    in property <int> font-weight: 500;
+    in property <length> padding-x: 12px;
+    callback clicked();
+    property <color> fg: !root.enabled && root.primary ? Theme.faint : root.primary ? Theme.on-accent : root.text-color;
+    height: 28px;
+    horizontal-stretch: 0;
+    border-radius: 6px;
+    border-width: root.primary ? 0 : 1px;
+    border-color: Theme.border;
+    background: !root.primary ? transparent : root.enabled ? Theme.accent : #22282d;
+    // primary has its own disabled look (MainError Send)
+    opacity: root.primary || root.enabled ? 1 : 0.4;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => {
+        if root.enabled {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: root.padding-x;
+        padding-right: root.padding-x;
+        spacing: 6px;
+        alignment: center;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Image { source: root.icon; width: 14px; height: 14px; colorize: root.fg; }
+        }
+        Text {
+            text: root.text;
+            color: root.fg;
+            font-size: root.font-size;
+            font-weight: root.primary ? 600 : root.font-weight;
+            vertical-alignment: center;
+        }
+    }
+    Rectangle {
+        border-radius: root.border-radius;
+        background: !root.enabled ? transparent : touch.pressed ? #00000026 : touch.has-hover ? #ffffff10 : transparent;
+    }
+    // focus ring drawn on top so caller border-color overrides can't hide it
+    if fs.has-focus: Rectangle {
+        border-radius: root.border-radius;
+        border-width: 1px;
+        border-color: Theme.accent;
+    }
+    fs := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if e.text == " " || e.text == Key.Return {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            fs.focus();
+            root.clicked();
+        }
+    }
+}
+
+export component Toggle inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled();
+    horizontal-stretch: 0;
+    accessible-role: checkbox;
+    accessible-label: root.text;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-action-default => { root.flip(); }
+    function flip() {
+        root.checked = !root.checked;
+        root.toggled();
+    }
+
+    HorizontalLayout {
+        spacing: 6px;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 28px;
+                height: 16px;
+                border-radius: 8px;
+                background: root.checked ? Theme.accent : Theme.border;
+                border-width: fs.has-focus ? 1px : 0;
+                border-color: root.checked ? Theme.accent-text : Theme.accent;
+                Rectangle {
+                    x: root.checked ? parent.width - self.width - 2px : 2px;
+                    y: 2px;
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    background: root.checked ? Theme.bg : Theme.muted;
+                    animate x { duration: 120ms; }
+                }
+            }
+        }
+        Text { text: root.text; font-size: 12px; font-weight: 500; color: Theme.text-soft; vertical-alignment: center; }
+    }
+    fs := FocusScope {
+        key-pressed(e) => {
+            if e.text == " " {
+                root.flip();
+                return accept;
+            }
+            reject
+        }
+    }
+    TouchArea {
+        clicked => {
+            fs.focus();
+            root.flip();
+        }
+    }
+}
+
+// large = 36 px send-bar variant
+export component Field inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    in property <bool> enabled <=> input.enabled;
+    in property <bool> large;
+    callback edited();
+    callback accepted(string);
+    property <length> pad: root.large ? 12px : 6px;
+    height: root.large ? 36px : 24px;
+    border-radius: root.large ? 8px : 5px;
+    border-width: 1px;
+    background: !root.enabled ? Theme.disabled-bg : root.large ? Theme.popup : Theme.control;
+    border-color: !root.enabled ? Theme.divider : input.has-focus ? Theme.accent : Theme.border;
+    clip: true;
+    forward-focus: input;
+    accessible-role: text-input;
+    accessible-enabled: root.enabled;
+    accessible-value: root.text;
+    accessible-placeholder-text: root.placeholder;
+
+    if root.text == "": Text {
+        x: root.pad;
+        width: parent.width - 2 * root.pad;
+        text: root.placeholder;
+        font-family: Theme.mono;
+        font-size: 12px;
+        color: Theme.faint;
+        vertical-alignment: center;
+        overflow: elide;
+        accessible-role: none;
+    }
+    Rectangle {
+        x: root.pad;
+        width: parent.width - 2 * root.pad;
+        clip: true;
+        input := TextInput {
+            // same trick as std LineEditBase: shift so the cursor stays visible in narrow fields
+            property <length> computed-x;
+            x: min(0px, max(parent.width - self.width - self.text-cursor-width, self.computed-x));
+            width: max(parent.width - self.text-cursor-width, self.preferred-width);
+            height: 100%;
+            single-line: true;
+            vertical-alignment: center;
+            font-family: Theme.mono;
+            font-size: 12px;
+            color: root.enabled ? Theme.text : Theme.faint;
+            selection-background-color: Theme.accent-soft;
+            selection-foreground-color: Theme.text;
+            accessible-role: none;
+            cursor-position-changed(pos) => {
+                if pos.x + self.computed-x < 0 {
+                    self.computed-x = -pos.x;
+                } else if pos.x + self.computed-x > parent.width - self.text-cursor-width {
+                    self.computed-x = parent.width - pos.x - self.text-cursor-width;
+                }
+            }
+            edited => { root.edited(); }
+            accepted => { root.accepted(self.text); }
+        }
+    }
+}
+
+export component Select inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index;
+    out property <string> current-value: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+    in property <bool> enabled: true;
+    in property <string> font-family: Theme.sans;
+    in property <length> font-size: 13px;
+    in property <length> padding-x: 8px;
+    // enabled-state border; toolbar turns it red on a failed connect
+    in property <color> outline: Theme.border;
+    // false = locked but drawn normal (toolbar while connected, Main.dc.html)
+    in property <bool> dim-disabled: true;
+    callback selected(string);
+    property <length> row-height: 26px;
+    property <bool> dim: !root.enabled && root.dim-disabled;
+    property <bool> can-open: root.enabled && root.model.length > 0;
+    height: 28px;
+    border-radius: 6px;
+    border-width: 1px;
+    background: root.dim ? Theme.disabled-bg : Theme.control;
+    border-color: root.dim ? Theme.divider : fs.has-focus ? Theme.accent : root.outline;
+    accessible-role: combobox;
+    accessible-enabled: root.enabled;
+    accessible-value: root.current-value;
+    accessible-expandable: true;
+    accessible-action-expand => {
+        if root.can-open {
+            popup.show();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: root.padding-x;
+        padding-right: root.padding-x;
+        spacing: 6px;
+        Text {
+            horizontal-stretch: 1;
+            text: root.current-value;
+            font-family: root.font-family;
+            font-size: root.font-size;
+            color: root.dim ? Theme.faint : Theme.text;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: @image-url("../../../assets/icons/chevron_down.svg");
+                width: 12px;
+                height: 12px;
+                colorize: root.dim ? Theme.faint : Theme.muted;
+            }
+        }
+    }
+    fs := FocusScope {
+        enabled: root.enabled;
+        key-pressed(e) => {
+            if !root.can-open {
+                return reject;
+            }
+            if e.text == " " || e.text == Key.Return {
+                popup.show();
+                return accept;
+            }
+            if e.text == Key.UpArrow || e.text == Key.DownArrow {
+                root.current-index = clamp(root.current-index + (e.text == Key.UpArrow ? -1 : 1), 0, root.model.length - 1);
+                root.selected(root.model[root.current-index]);
+                return accept;
+            }
+            reject
+        }
+    }
+    TouchArea {
+        enabled: root.can-open;
+        clicked => {
+            fs.focus();
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        // click-on-release would close it after a drag-scroll with no pick
+        close-policy: close-on-click-outside;
+        // 23 baud rates: cap and scroll
+        height: min(root.model.length * root.row-height + 8px, 9 * root.row-height + 8px);
+        Rectangle {
+            background: Theme.popup;
+            border-color: Theme.border;
+            border-width: 1px;
+            border-radius: 6px;
+            drop-shadow-blur: 16px;
+            drop-shadow-offset-y: 6px;
+            drop-shadow-color: #00000080;
+            clip: true;
+            flick := Flickable {
+                x: 4px;
+                y: 4px;
+                width: parent.width - 8px;
+                height: parent.height - 8px;
+                content-height: root.model.length * root.row-height;
+                // open with the current row in view
+                init => {
+                    self.content-y = max(self.height - self.content-height, min(0px, -(root.current-index - 4) * root.row-height));
+                }
+                VerticalLayout {
+                    for item[i] in root.model: Rectangle {
+                        height: root.row-height;
+                        border-radius: 4px;
+                        background: row.has-hover ? Theme.accent-soft : transparent;
+                        HorizontalLayout {
+                            padding-left: root.padding-x - 4px;
+                            padding-right: root.padding-x - 4px;
+                            Text {
+                                text: item;
+                                font-family: root.font-family;
+                                font-size: root.font-size;
+                                color: i == root.current-index ? Theme.accent-text : Theme.text;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                        row := TouchArea {
+                            clicked => {
+                                root.current-index = i;
+                                root.selected(item);
+                                popup.close();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
